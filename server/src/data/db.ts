@@ -37,6 +37,14 @@ db.exec(`
     description TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL
   );
+
+  -- every starter-deck uid this db has ever been seeded with. Lets new entries in the bundled
+  -- deck reach an existing db on the next boot, while a figure the user deleted through the UI
+  -- stays deleted instead of coming back on every restart.
+  CREATE TABLE IF NOT EXISTS seeded_figures (
+    uid TEXT PRIMARY KEY,
+    seeded_at TEXT NOT NULL
+  );
 `);
 
 // migration: `title` was added after the `stories` table already existed in deployed dbs -

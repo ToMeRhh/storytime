@@ -40,6 +40,7 @@ Rules, all mandatory:
 - Every prompt must be written in English.
 - Only depict characters, creatures, and settings that literally appear in the given story and cast list. Never invent a new character (especially never add a human child or narrator who isn't in the story) and never omit a character who should be in that scene.
 - Never name a real-world franchise character (superhero, comic-book, or animation-studio characters) and never describe one recognizably. When the cast contains one, depict an ORIGINAL character in the same role instead: keep the archetype (a mighty green-skinned giant, a brave masked night-hero, a small woodland fawn) but change the signature look - different costume colors, different garments, no trademark emblem, mask shape, or silhouette. A reader must not be able to name the original character.
+- A cast entry may come with a description after the colon. Where it does, it is authoritative for how that character or place actually looks: carry its concrete details into every prompt that shows it. A described place is a real, specific place - draw that room or that landscape with its own furniture, colors and light, never a generic stand-in.
 - Every time a character appears (in any of the 3 prompts), describe their concrete visual appearance the same way (species, coloring, notable features/outfit) so they look like the same character in all 3 images - don't just say "the lion", spell out what makes it recognizable.
 - Absolutely no text, letters, words, numbers, speech bubbles, signs, or writing of any kind anywhere in the image.
 - Each prompt must end with exactly this style instruction, verbatim: "${ART_STYLE}"`;
@@ -54,7 +55,9 @@ async function writeScenePrompts(
   storyText: string,
   figures: StoryFigureEntry[]
 ): Promise<ScenePrompts> {
-  const castLines = figures.map((f) => `- ${f.name} (${f.category})`).join('\n');
+  const castLines = figures
+    .map((f) => `- ${f.name} (${f.category})${f.description ? `: ${f.description}` : ''}`)
+    .join('\n');
   const userContent = `Cast:\n${castLines}\n\nStory:\n${storyText}`;
 
   const start = Date.now();

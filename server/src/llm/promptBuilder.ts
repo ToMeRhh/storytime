@@ -52,11 +52,13 @@ function buildSystemPrompt(length: StoryLength): string {
 אל תשתמש בתגי Markdown (כמו #, *, -) ואל תוסיף הערות או הסברים נוספים מעבר לכותרת ולגוף הסיפור.`;
 }
 
-function groupByCategory(figures: StoryFigureEntry[]): Partial<Record<Category, string[]>> {
-  const groups: Partial<Record<Category, string[]>> = {};
+function groupByCategory(
+  figures: StoryFigureEntry[]
+): Partial<Record<Category, StoryFigureEntry[]>> {
+  const groups: Partial<Record<Category, StoryFigureEntry[]>> = {};
   for (const figure of figures) {
     if (!groups[figure.category]) groups[figure.category] = [];
-    groups[figure.category]!.push(figure.name);
+    groups[figure.category]!.push(figure);
   }
   return groups;
 }
@@ -70,9 +72,14 @@ export function buildPrompt(
   const lines: string[] = [];
 
   for (const category of Object.keys(CATEGORY_LABELS) as Category[]) {
-    const names = groups[category];
-    if (names && names.length > 0) {
-      lines.push(`${CATEGORY_LABELS[category]}: ${names.join(', ')}`);
+    const entries = groups[category];
+    if (entries && entries.length > 0) {
+      lines.push(`${CATEGORY_LABELS[category]}:`);
+      // a figure carries a description when the catalog has one; it says what the figure really
+      // is, so a place like the children's own bedroom is written as that room and not invented
+      for (const entry of entries) {
+        lines.push(entry.description ? `- ${entry.name}: ${entry.description}` : `- ${entry.name}`);
+      }
     }
   }
 

@@ -21,33 +21,59 @@ const upsertStmt = db.prepare(`
 const getStmt = db.prepare('SELECT uid, name, category, description FROM figures WHERE uid = ?');
 const listStmt = db.prepare('SELECT uid, name, category, description FROM figures ORDER BY created_at ASC');
 const deleteStmt = db.prepare('DELETE FROM figures WHERE uid = ?');
+const wasSeededStmt = db.prepare('SELECT uid FROM seeded_figures WHERE uid = ?');
+const seededCountStmt = db.prepare('SELECT COUNT(*) as count FROM seeded_figures');
+const markSeededStmt = db.prepare(
+  'INSERT OR IGNORE INTO seeded_figures (uid, seeded_at) VALUES (@uid, @seededAt)'
+);
 
-// one-time seed from the bundled starter deck (server/src/data/figures.json) - after this,
-// the DB (not the JSON file) is the source of truth, so figures added via the UI survive redeploys
-function seedIfEmpty(): void {
-  const { count } = countStmt.get() as { count: number };
-  if (count > 0) return;
-
+// Seed from the bundled starter deck (server/src/data/figures.json). The DB stays the source of
+// truth - figures enrolled through the UI survive redeploys - but a uid the deck has never
+// seeded into this DB is new, and gets added on boot so extending the deck actually reaches a
+// server that was seeded long ago. Anything already seeded is left alone, so a figure edited or
+// deleted through the UI is not resurrected or overwritten on the next restart.
+function seedNewFromStarterDeck(): void {
   const raw = fs.readFileSync(config.figuresPath, 'utf8');
   const parsed: Record<string, { name: string; category: Category; description: string }> = JSON.parse(raw);
-  const createdAt = new Date().toISOString();
+  const seededAt = new Date().toISOString();
 
-  const insertAll = db.transaction(() => {
+  // a db seeded before this table existed has the whole deck in `figures` and nothing recorded
+  // here; treat what it already holds as seeded so the first boot after the upgrade is a no-op
+  const backfill = countStmt.get() as { count: number };
+  if (backfill.count > 0 && (seededCountStmt.get() as { count: number }).count === 0) {
+    const markExisting = db.transaction(() => {
+      for (const uid of Object.keys(parsed)) {
+        const normalized = normalizeUid(uid);
+        if (getStmt.get(normalized)) markSeededStmt.run({ uid: normalized, seededAt });
+      }
+    });
+    markExisting();
+  }
+
+  const added: string[] = [];
+  const insertNew = db.transaction(() => {
     for (const [uid, figure] of Object.entries(parsed)) {
+      const normalized = normalizeUid(uid);
+      if (wasSeededStmt.get(normalized)) continue;
       upsertStmt.run({
-        uid: normalizeUid(uid),
+        uid: normalized,
         name: figure.name,
         category: figure.category,
         description: figure.description,
-        createdAt,
+        createdAt: seededAt,
       });
+      markSeededStmt.run({ uid: normalized, seededAt });
+      added.push(figure.name);
     }
   });
-  insertAll();
-  logger.info({ count: Object.keys(parsed).length }, 'figures table seeded from starter deck');
+  insertNew();
+
+  if (added.length > 0) {
+    logger.info({ count: added.length, figures: added }, 'new starter-deck figures added');
+  }
 }
 
-seedIfEmpty();
+seedNewFromStarterDeck();
 
 export function resolveFigure(rawUid: string): Figure | null {
   const uid = normalizeUid(rawUid);

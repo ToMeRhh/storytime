@@ -253,7 +253,15 @@ export async function generateStory(
   const recentRows = recentGeneratedStmt.all(RECENT_HISTORY_LIMIT) as { story_text: string | null }[];
   const recentHistory = recentRows.map((r) => r.story_text).filter((t): t is string => Boolean(t));
 
-  const prompt = buildPrompt(story.figures, recentHistory, length);
+  // descriptions live on the figures table rather than the story row, so look them up once here
+  // and hand them to both the storyteller and the illustrator - that is what makes a figure like
+  // "חדר הילדים" come out as that actual room instead of an invented one
+  const describedFigures: StoryFigureEntry[] = story.figures.map((f) => {
+    const description = figureService.resolveFigure(f.uid)?.description;
+    return description ? { ...f, description } : f;
+  });
+
+  const prompt = buildPrompt(describedFigures, recentHistory, length);
   const provider = getProvider();
   const textStart = Date.now();
   const rawText = await provider.generateStory(prompt);
@@ -285,7 +293,7 @@ export async function generateStory(
     };
 
     // deliberately not awaited - the reader gets the story now and the pictures land later
-    void generateStoryImages(storyText, story.figures, onScene)
+    void generateStoryImages(storyText, describedFigures, onScene)
       .then((images) => {
         // individual scenes can come back null (safety-system blocks); the positions are kept
         // so the ones that made it still land in the right places in the story

@@ -13,6 +13,10 @@ export interface StoryFigureEntry {
   category: Category;
   addedAt: string;
   entryId: number;
+  // looked up from the figures table at generation time, not stored per story - it tells the
+  // storyteller and the illustrator what a figure actually looks like (notably "חדר הילדים",
+  // which is a real room and should be drawn as that room rather than a generic bedroom)
+  description?: string;
 }
 
 export type StoryStatus = 'collecting' | 'generated';

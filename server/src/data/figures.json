@@ -14,6 +14,15 @@
   "PLACEHOLDER-CHAR-13": { "name": "במבי הצבי הקטן", "category": "character", "description": "צבי קטן וסקרן שלומד להכיר את היער, לעמוד על רגליו ולמצוא חברים" },
   "PLACEHOLDER-CHAR-14": { "name": "באטמן הגיבור האמיץ", "category": "character", "description": "גיבור-על אמיץ ותושייתי שמגן על העיר ועוזר לכל מי שזקוק לעזרה" },
   "PLACEHOLDER-CHAR-15": { "name": "האלק הענק הירוק", "category": "character", "description": "ענק ירוק וחזק בעל לב טוב, שמשתמש בכוח שלו כדי לעזור ולהגן על חברים" },
+  "PLACEHOLDER-CHAR-16": { "name": "אוגרת קטנטנה", "category": "character", "description": "אוגרת פרוותית וזריזה שאוגרת גרעינים בלחיים ומחביאה אוצרות קטנים בכל פינה" },
+  "PLACEHOLDER-CHAR-17": { "name": "פינגווין מתנדנד", "category": "character", "description": "פינגווין שמתנדנד כשהוא הולך, מחליק על הבטן ואוהב מים קפואים" },
+  "PLACEHOLDER-CHAR-18": { "name": "טיגריס מפוספס", "category": "character", "description": "טיגריס כתום עם פסים שחורים, חזק ורך כפיים, שיודע לצעוד בלי להשמיע קול" },
+  "PLACEHOLDER-CHAR-19": { "name": "דולפין קופצני", "category": "character", "description": "דולפין חכם ושמח שקופץ מעל הגלים ומדבר בציוצים קטנים" },
+  "PLACEHOLDER-CHAR-20": { "name": "נמלה חרוצה", "category": "character", "description": "נמלה זעירה שנושאת דברים גדולים ממנה פי כמה ולא מפסיקה לעבוד עם החברות שלה" },
+  "PLACEHOLDER-CHAR-21": { "name": "כריש טוב לב", "category": "character", "description": "כריש גדול עם הרבה שיניים ולב רך, ששוחה מהר יותר מכולם ושומר על דגי הריף" },
+  "PLACEHOLDER-CHAR-22": { "name": "דבורה מזמזמת", "category": "character", "description": "דבורה קטנה ומפוספסת שמזמזמת בין הפרחים ואוספת אבקה מתוקה לכוורת" },
+  "PLACEHOLDER-CHAR-23": { "name": "חייזר סקרן", "category": "character", "description": "חייזר קטן מכוכב רחוק, שרואה הכל בפעם הראשונה ושואל על כל דבר מה זה" },
+  "PLACEHOLDER-CHAR-24": { "name": "עכביש טווה", "category": "character", "description": "עכביש סבלני שטווה רשתות כמו תחרה ומתקן אותן שוב בכל בוקר" },
 
   "PLACEHOLDER-LOC-01": { "name": "יער קסום", "category": "location", "description": "יער ירוק ומלא אור שבו קורים דברים קסומים" },
   "PLACEHOLDER-LOC-02": { "name": "טירה על העננים", "category": "location", "description": "טירה שצפה גבוה בשמיים בין העננים הרכים" },
@@ -24,6 +33,11 @@
   "PLACEHOLDER-LOC-07": { "name": "יער הפיות הזוהר", "category": "location", "description": "יער קסום שמתעורר לחיים בלילה עם אורות פיות רוקדים" },
   "PLACEHOLDER-LOC-08": { "name": "עיר תת-ימית קסומה", "category": "location", "description": "עיר מתחת לגלים עם ארמונות אלמוגים ודגים צבעוניים" },
   "PLACEHOLDER-LOC-09": { "name": "הר הקשת המתגלגלת", "category": "location", "description": "הר קסום שממנו זורם מפל בצבעי הקשת אל עמק פורח" },
+  "PLACEHOLDER-LOC-10": { "name": "חדר הילדים", "category": "location", "description": "חדר שינה אמיתי עם קירות לבנים ורצפת אריחים אפורה ושטיח אפור רך וגדול באמצע. מיטת עץ בהיר גבוהה עם מעקה ושמיכת לבבות, ומתחתיה מזרן שני עם שמיכה ירוקה מנוקדת. מדף ספרים לבן משופע מלא ספרי ילדים, מנוף צעצוע צהוב על השטיח, מראה גבוהה נשענת על הקיר, מנורה לבנה עגולה תלויה מהתקרה, חלון עם וילון לבן דק שהאור עובר דרכו, ושולחן יצירה עם צנצנת טושים" },
+  "PLACEHOLDER-LOC-11": { "name": "הירח", "category": "location", "description": "הירח הלבן והשקט, עם אבק רך, מכתשים עגולים וכדור הארץ הכחול תלוי בשמיים" },
+  "PLACEHOLDER-LOC-12": { "name": "חללית", "category": "location", "description": "חללית עם חלונות עגולים, כפתורים מהבהבים וכיסאות שצפים באוויר" },
+  "PLACEHOLDER-LOC-13": { "name": "מערת הדובים", "category": "location", "description": "מערה חמימה ואפלולית עם ריח של עצים, שבה דובים ישנים כל החורף" },
+  "PLACEHOLDER-LOC-14": { "name": "כדור פורח", "category": "location", "description": "סל קש שתלוי מתחת לבלון ענק וצבעוני, ומרחף לאט מעל השדות" },
 
   "PLACEHOLDER-MOOD-01": { "name": "שמחה", "category": "mood", "description": "תחושת שמחה גדולה ואור בלב" },
   "PLACEHOLDER-MOOD-02": { "name": "הרפתקנות", "category": "mood", "description": "רצון לצאת ולגלות דברים חדשים" },
@@ -40,5 +54,11 @@
   "PLACEHOLDER-OBJ-03": { "name": "חרב אור", "category": "object", "description": "חרב קסומה שזוהרת באור בהיר ומגנה על חברים" },
   "PLACEHOLDER-OBJ-04": { "name": "כתר זהב", "category": "object", "description": "כתר נוצץ שגורם לכל מי שחובש אותו להרגיש מלכותי ואמיץ" },
   "PLACEHOLDER-OBJ-05": { "name": "גלימת גיבורים", "category": "object", "description": "גלימה אדומה שמעופפת ברוח ונותנת תחושת כוח וגבורה" },
-  "PLACEHOLDER-OBJ-06": { "name": "מטה קסמים", "category": "object", "description": "מטה קוסמים עם אבן זוהרת בקצה, שמפזר ניצוצות קסם באוויר" }
+  "PLACEHOLDER-OBJ-06": { "name": "מטה קסמים", "category": "object", "description": "מטה קוסמים עם אבן זוהרת בקצה, שמפזר ניצוצות קסם באוויר" },
+  "PLACEHOLDER-OBJ-07": { "name": "טאבלט", "category": "object", "description": "מסך דק ומזוגג שאפשר לצייר עליו באצבע ולראות בו תמונות ממקומות רחוקים" },
+  "PLACEHOLDER-OBJ-08": { "name": "מגן גיבורים", "category": "object", "description": "מגן עגול וחזק שאפשר להסתתר מאחוריו, והוא מגן על כל מי שעומד לידו" },
+  "PLACEHOLDER-OBJ-09": { "name": "מחשב נייד", "category": "object", "description": "מחשב קטן שנפתח כמו ספר, עם מקלדת ומסך שמאיר בחושך" },
+  "PLACEHOLDER-OBJ-10": { "name": "אוזניות", "category": "object", "description": "זוג אוזניות רכות שמנגנות מוזיקה שרק מי שחובש אותן שומע" },
+  "PLACEHOLDER-OBJ-11": { "name": "פטיש הרעם", "category": "object", "description": "פטיש כבד מאוד שרק מי שראוי לו מצליח להרים, ומזמן ברקים ורעמים" },
+  "PLACEHOLDER-OBJ-12": { "name": "מדפסת תלת-ממד", "category": "object", "description": "מכונה שמדפיסה שכבה על שכבה, ובסוף יוצא ממנה חפץ אמיתי שאפשר להחזיק ביד" }
 }
