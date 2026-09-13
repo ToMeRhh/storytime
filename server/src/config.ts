@@ -14,6 +14,7 @@ export interface Config {
   imageQuality: 'low' | 'medium' | 'high';
   dbPath: string;
   figuresPath: string;
+  referencePhotosPath: string;
   logLevel: string;
   logPretty: boolean;
 }
@@ -45,6 +46,14 @@ const config: Config = {
   figuresPath: process.env.FIGURES_PATH
     ? path.resolve(process.env.FIGURES_PATH)
     : path.join(__dirname, '..', 'src', 'data', 'figures.json'),
+  // Real photographs, one per figure uid (e.g. PLACEHOLDERLOC10.jpg for חדר הילדים). When a
+  // story's location has one, the illustrations are painted over that photo instead of being
+  // imagined from scratch, so the scene happens in the actual room. Lives under data/ because
+  // that is the mounted volume in docker-compose: photos survive a redeploy and stay off the
+  // static-served ui/ directory.
+  referencePhotosPath: process.env.REFERENCE_PHOTOS_PATH
+    ? path.resolve(process.env.REFERENCE_PHOTOS_PATH)
+    : path.join(__dirname, '..', 'data', 'reference-photos'),
   // 'silent' in tests by default (LLM_PROVIDER=mock) keeps test output clean without an extra env var
   logLevel: process.env.LOG_LEVEL || (process.env.LLM_PROVIDER === 'mock' ? 'silent' : 'info'),
   logPretty: (process.env.LOG_PRETTY ?? 'true') === 'true',

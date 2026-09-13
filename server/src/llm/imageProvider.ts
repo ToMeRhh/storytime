@@ -1,4 +1,6 @@
-import OpenAI from 'openai';
+import fs from 'fs';
+import path from 'path';
+import OpenAI, { toFile } from 'openai';
 import config from '../config';
 import logger from '../logger';
 import { StoryFigureEntry } from '../types';
@@ -103,20 +105,68 @@ function isModerationBlocked(err: unknown): boolean {
 // dominates the payload: the same 1024px picture is ~2.4MB as base64 PNG and ~165KB as base64
 // WebP q75. At the size these are actually displayed (a ~355px-wide column, so ~1024px on a 3x
 // screen) the two are indistinguishable, so PNG only ever cost bandwidth.
-const IMAGE_FORMAT = 'webp';
+const IMAGE_FORMAT = 'webp' as const;
 const IMAGE_COMPRESSION = 75;
 
-async function requestImage(prompt: string): Promise<string> {
-  const res = await getClient().images.generate({
+// the API accepts only these three, and rejects an upload whose mimetype it can't read - a bare
+// read stream arrives as application/octet-stream, so the type is always set explicitly below
+const PHOTO_MIMETYPES: Record<string, string> = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+};
+const PHOTO_EXTENSIONS = Object.keys(PHOTO_MIMETYPES);
+
+// A location can have a real photograph of itself on disk (see config.referencePhotosPath).
+// Returns the first one found for this story's places - that photo becomes the base every scene
+// is painted over, so the story happens in the real room rather than an imagined one.
+export function findReferencePhoto(figures: StoryFigureEntry[]): string | null {
+  for (const figure of figures) {
+    if (figure.category !== 'location') continue;
+    for (const ext of PHOTO_EXTENSIONS) {
+      const candidate = path.join(config.referencePhotosPath, `${figure.uid}${ext}`);
+      if (fs.existsSync(candidate)) return candidate;
+    }
+  }
+  return null;
+}
+
+// Wrapped around each scene prompt when a reference photo is in play. The room has to survive the
+// restyling - a picture of some other bedroom would defeat the point - while everything in it is
+// repainted, so the instruction is explicit about which parts are fixed and which are not.
+function buildEditPrompt(prompt: string): string {
+  return (
+    'Repaint this photograph of a real room as a hand-illustrated scene from a children\'s ' +
+    'picture book. Keep the room itself recognizable: the same layout, the same furniture in ' +
+    'the same places, the same proportions, window and light direction. Do not photograph it - ' +
+    'redraw every surface in the illustration style, warm and storybook-magical. Then set this ' +
+    `scene inside that room: ${prompt}`
+  );
+}
+
+async function requestImage(prompt: string, referencePhoto: string | null): Promise<string> {
+  const shared = {
     model: config.imageModel,
-    prompt,
     // 1024x1024 is the smallest the gpt-image models offer (256/512 are dall-e-2 only)
-    size: '1024x1024',
+    size: '1024x1024' as const,
     quality: config.imageQuality,
     output_format: IMAGE_FORMAT,
     output_compression: IMAGE_COMPRESSION,
     n: 1,
-  });
+  };
+
+  // a fresh upload per call: these are retried, and a consumed stream cannot be replayed
+  const res = referencePhoto
+    ? await getClient().images.edit({
+        ...shared,
+        image: await toFile(fs.createReadStream(referencePhoto), path.basename(referencePhoto), {
+          type: PHOTO_MIMETYPES[path.extname(referencePhoto).toLowerCase()],
+        }),
+        prompt: buildEditPrompt(prompt),
+      })
+    : await getClient().images.generate({ ...shared, prompt });
+
   const b64 = res.data?.[0]?.b64_json;
   if (!b64) {
     throw new Error('image generation returned no data');
@@ -154,7 +204,8 @@ async function debrandPrompt(prompt: string): Promise<string> {
 async function generateImage(
   prompt: string,
   index: number,
-  fallbackPrompt: string
+  fallbackPrompt: string,
+  referencePhoto: string | null
 ): Promise<string | null> {
   const start = Date.now();
   // Each rung is tried only if the one before it was blocked: the same prompt again (the output
@@ -170,9 +221,15 @@ async function generateImage(
 
   for (let attempt = 0; attempt < attempts.length; attempt++) {
     try {
-      const image = await requestImage(await attempts[attempt]());
+      const image = await requestImage(await attempts[attempt](), referencePhoto);
       logger.debug(
-        { index, attempt, model: config.imageModel, durationMs: Date.now() - start },
+        {
+          index,
+          attempt,
+          model: config.imageModel,
+          fromPhoto: Boolean(referencePhoto),
+          durationMs: Date.now() - start,
+        },
         'illustration generated'
       );
       return image;
@@ -204,9 +261,13 @@ export async function generateStoryImages(
   onScene?: (index: number, image: string | null) => void
 ): Promise<(string | null)[]> {
   const { scenes, fallback } = await writeScenePrompts(storyText, figures);
+  const referencePhoto = findReferencePhoto(figures);
+  if (referencePhoto) {
+    logger.info({ referencePhoto }, 'illustrating over a reference photo of the real place');
+  }
   return Promise.all(
     scenes.map(async (prompt, index) => {
-      const image = await generateImage(prompt, index, fallback);
+      const image = await generateImage(prompt, index, fallback, referencePhoto);
       // reported as each scene lands, so a reader can be shown the first picture while a scene
       // that needed retries is still rendering
       onScene?.(index, image);

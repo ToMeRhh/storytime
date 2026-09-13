@@ -57,8 +57,9 @@
   "PLACEHOLDER-OBJ-06": { "name": "מטה קסמים", "category": "object", "description": "מטה קוסמים עם אבן זוהרת בקצה, שמפזר ניצוצות קסם באוויר" },
   "PLACEHOLDER-OBJ-07": { "name": "טאבלט", "category": "object", "description": "מסך דק ומזוגג שאפשר לצייר עליו באצבע ולראות בו תמונות ממקומות רחוקים" },
   "PLACEHOLDER-OBJ-08": { "name": "מגן גיבורים", "category": "object", "description": "מגן עגול וחזק שאפשר להסתתר מאחוריו, והוא מגן על כל מי שעומד לידו" },
-  "PLACEHOLDER-OBJ-09": { "name": "מחשב נייד", "category": "object", "description": "מחשב קטן שנפתח כמו ספר, עם מקלדת ומסך שמאיר בחושך" },
+  "PLACEHOLDER-OBJ-09": { "name": "מחברת", "category": "object", "description": "מחברת נייר עם דפים חלקים וכריכה קשה, שאפשר לצייר ולכתוב בה כל מה שרוצים" },
   "PLACEHOLDER-OBJ-10": { "name": "אוזניות", "category": "object", "description": "זוג אוזניות רכות שמנגנות מוזיקה שרק מי שחובש אותן שומע" },
   "PLACEHOLDER-OBJ-11": { "name": "פטיש הרעם", "category": "object", "description": "פטיש כבד מאוד שרק מי שראוי לו מצליח להרים, ומזמן ברקים ורעמים" },
-  "PLACEHOLDER-OBJ-12": { "name": "מדפסת תלת-ממד", "category": "object", "description": "מכונה שמדפיסה שכבה על שכבה, ובסוף יוצא ממנה חפץ אמיתי שאפשר להחזיק ביד" }
+  "PLACEHOLDER-OBJ-12": { "name": "מדפסת תלת-ממד", "category": "object", "description": "מכונה שמדפיסה שכבה על שכבה, ובסוף יוצא ממנה חפץ אמיתי שאפשר להחזיק ביד" },
+  "PLACEHOLDER-OBJ-13": { "name": "אקדח מים", "category": "object", "description": "צעצוע פלסטיק צבעוני שממלאים במים ומתיזים ממנו קשת קטנה של טיפות ביום חם" }
 }
