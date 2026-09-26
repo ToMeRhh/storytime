@@ -1,9 +1,14 @@
 import OpenAI from 'openai';
-import config from '../config';
-import logger from '../logger';
-import { LLMPrompt } from '../types';
+import config from '../../config';
+import logger from '../../logger';
+import { LLMPrompt } from '../../types';
+import { StoryProvider } from './types';
 
 let client: OpenAI | null = null;
+
+export function resetClientForTesting(): void {
+  client = null;
+}
 
 function getClient(): OpenAI {
   if (!client) {
@@ -41,3 +46,5 @@ export async function generateStory({ system, user, maxTokens }: LLMPrompt): Pro
     throw err;
   }
 }
+
+export const provider: StoryProvider = { generateStory };
