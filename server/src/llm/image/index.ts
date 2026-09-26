@@ -1,10 +1,12 @@
 import config from '../../config';
 import { ImageProvider } from './types';
 import * as openaiImageProvider from './openaiImageProvider';
+import * as geminiImageProvider from './geminiImageProvider';
 import * as mockImageProvider from './mockImageProvider';
 
 const PROVIDERS: Record<string, ImageProvider> = {
   openai: openaiImageProvider,
+  gemini: geminiImageProvider,
   mock: mockImageProvider,
 };
 
