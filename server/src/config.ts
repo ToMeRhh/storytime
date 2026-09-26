@@ -9,6 +9,7 @@ export interface Config {
   llmModel: string;
   anthropicApiKey: string;
   openaiApiKey: string;
+  geminiApiKey: string;
   generateImages: boolean;
   imageModel: string;
   imageQuality: 'low' | 'medium' | 'high';
@@ -19,12 +20,28 @@ export interface Config {
   logPretty: boolean;
 }
 
+export function resolveDefaultLlmModel(provider: string, envModel = process.env.LLM_MODEL): string {
+  if (envModel) return envModel;
+  switch (provider) {
+    case 'gemini':
+      return 'gemini-3.8-flash';
+    case 'anthropic':
+      return 'claude-haiku-4-5-20251001';
+    case 'openai':
+    default:
+      return 'gpt-4.1';
+  }
+}
+
+const llmProvider = process.env.LLM_PROVIDER || 'openai';
+
 const config: Config = {
   port: parseInt(process.env.PORT || '3000', 10) || 3000,
-  llmProvider: process.env.LLM_PROVIDER || 'openai',
-  llmModel: process.env.LLM_MODEL || 'gpt-4.1',
+  llmProvider,
+  llmModel: resolveDefaultLlmModel(llmProvider),
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
   openaiApiKey: process.env.OPENAI_API_KEY || '',
+  geminiApiKey: process.env.GEMINI_API_KEY || '',
   // illustrations always go through OpenAI's image API regardless of LLM_PROVIDER -
   // Claude has no image generation - so this only takes effect when OPENAI_API_KEY is set
   generateImages: (process.env.GENERATE_IMAGES ?? 'true') === 'true',
