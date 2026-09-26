@@ -79,29 +79,43 @@ function isModerationBlocked(err: unknown): boolean {
   return false;
 }
 
-async function requestImage(prompt: string, referencePhoto: string | null): Promise<string> {
-  let contents: unknown;
-  if (referencePhoto) {
-    const ext = path.extname(referencePhoto).toLowerCase();
-    const mimeType = PHOTO_MIMETYPES[ext] || 'image/jpeg';
-    const photoBuffer = fs.readFileSync(referencePhoto);
-    const photoBase64 = photoBuffer.toString('base64');
-    contents = [
-      {
-        inlineData: {
-          mimeType,
-          data: photoBase64,
-        },
-      },
-      buildEditPrompt(prompt),
-    ];
-  } else {
-    contents = prompt;
+export type ImageContentPart =
+  | string
+  | {
+      inlineData: {
+        mimeType: string;
+        data: string;
+      };
+    };
+
+export async function buildImageContents(
+  prompt: string,
+  referencePhoto: string | null
+): Promise<ImageContentPart[] | string> {
+  if (!referencePhoto) {
+    return prompt;
   }
+  const ext = path.extname(referencePhoto).toLowerCase();
+  const mimeType = PHOTO_MIMETYPES[ext] || 'image/jpeg';
+  const photoBuffer = await fs.promises.readFile(referencePhoto);
+  const photoBase64 = photoBuffer.toString('base64');
+  return [
+    {
+      inlineData: {
+        mimeType,
+        data: photoBase64,
+      },
+    },
+    buildEditPrompt(prompt),
+  ];
+}
+
+async function requestImage(prompt: string, referencePhoto: string | null): Promise<string> {
+  const contents = await buildImageContents(prompt, referencePhoto);
 
   const res = await getClient().models.generateContent({
     model: config.imageModel,
-    contents: contents as string,
+    contents: contents as string | ImageContentPart[],
     config: {
       responseModalities: ['IMAGE'],
     },
