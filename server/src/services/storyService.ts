@@ -1,11 +1,10 @@
 import { randomUUID } from 'crypto';
 import db from '../data/db';
-import config from '../config';
+import config, { isImageGenerationConfigured } from '../config';
 import logger from '../logger';
 import * as figureService from './figureService';
-import { getProvider } from '../llm';
+import { getProvider, generateStoryImages } from '../llm';
 import { buildPrompt } from '../llm/promptBuilder';
-import { generateStoryImages } from '../llm/imageProvider';
 import { Category, Figure, Story, StoryFigureEntry, StorySummary, StoryStatus, StoryLength } from '../types';
 
 const REQUIRED_CATEGORIES: Category[] = ['character', 'location', 'mood'];
@@ -276,8 +275,9 @@ export async function generateStory(
   // illustrations are generated fresh on every request and never persisted (not written to
   // the db, not saved to disk) - they only ever exist in this one response.
   // Skipped in mock mode (llmProvider === 'mock') so tests stay offline even though a real
-  // OPENAI_API_KEY may be present in the environment.
-  if (config.generateImages && config.openaiApiKey && config.llmProvider !== 'mock' && wantsImages) {
+  // API key may be present in the environment.
+  const hasImageKey = isImageGenerationConfigured(config.imageProvider, config);
+  if (config.generateImages && hasImageKey && config.llmProvider !== 'mock' && wantsImages) {
     const imagesStart = Date.now();
     pruneImageJobs();
     imageJobs.set(storyId, { status: 'pending', images: [null, null, null], updatedAt: Date.now() });
