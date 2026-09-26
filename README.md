@@ -1,6 +1,6 @@
 # Storytime
 
-Generates short, personalized Hebrew bedtime stories for kids. Pick a cast — a character, a place, a mood, and optionally an object — and an LLM (Claude or OpenAI) writes a story around them.
+Generates short, personalized Hebrew bedtime stories for kids. Pick a cast — a character, a place, a mood, and optionally an object — and an LLM (Claude, OpenAI, or Gemini) writes a story around them.
 
 There are two ways to build a story:
 
@@ -36,7 +36,7 @@ npm run install:all   # installs server/ and ui/'s own dependencies
 npm run dev           # runs the backend (tsx watch) and the UI bundler (esbuild --watch) together
 ```
 
-Then open <http://localhost:3000/>. You'll need an API key for your chosen LLM provider (`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`) in `server/.env` for story generation to actually work - see [server/README.md](server/README.md#run-locally) for the one-time setup, and [server/README.md](server/README.md#config-env) for where to get a key.
+Then open <http://localhost:3000/>. You'll need an API key for your chosen LLM provider (`GEMINI_API_KEY`, `OPENAI_API_KEY`, or `ANTHROPIC_API_KEY`) in `server/.env` for story generation to actually work - see [server/README.md](server/README.md#run-locally) for the one-time setup, and [server/README.md](server/README.md#config-env) for where to get a key.
 
 Editing `ui/src/app.ts` while `npm run dev` is running rebuilds `ui/app.js` automatically (via esbuild's watch mode) - just refresh the browser after saving. `server/src/**/*.ts` changes restart the backend automatically (via tsx watch).
 
@@ -74,8 +74,11 @@ services:
       - PORT=3000
       - LLM_PROVIDER=${LLM_PROVIDER}
       - LLM_MODEL=${LLM_MODEL}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - IMAGE_PROVIDER=${IMAGE_PROVIDER}
+      - IMAGE_MODEL=${IMAGE_MODEL}
       - GENERATE_IMAGES=${GENERATE_IMAGES}
       - DB_PATH=/app/server/data/stories.db
       - LOG_LEVEL=${LOG_LEVEL}
@@ -88,10 +91,13 @@ Then, in the stack's **Environment variables** section (not in the YAML itself -
 
 | Variable | Example |
 |---|---|
-| `LLM_PROVIDER` | `openai` (or `anthropic`) |
-| `LLM_MODEL` | `gpt-4o` (or `claude-haiku-4-5-20251001`) |
-| `ANTHROPIC_API_KEY` | `sk-ant-...` |
-| `OPENAI_API_KEY` | `sk-...` (also required for illustrations, regardless of `LLM_PROVIDER`) |
+| `LLM_PROVIDER` | `gemini` (or `openai`, `anthropic`) |
+| `LLM_MODEL` | `gemini-3.8-flash` (or `gpt-4o`, `claude-haiku-4-5-20251001`) |
+| `GEMINI_API_KEY` | `AIza...` (required when `LLM_PROVIDER=gemini` or `IMAGE_PROVIDER=gemini`) |
+| `OPENAI_API_KEY` | `sk-...` (required when `LLM_PROVIDER=openai` or `IMAGE_PROVIDER=openai`) |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` (required when `LLM_PROVIDER=anthropic`) |
+| `IMAGE_PROVIDER` | `gemini` (or `openai`) |
+| `IMAGE_MODEL` | `gemini-3.1-flash-image` (or `gpt-image-1.5`) |
 | `GENERATE_IMAGES` | `true` (or `false` to turn off illustrations) |
 | `LOG_LEVEL` | `info` (`debug` for full LLM/image call detail, `warn` for quieter logs) |
 
@@ -106,8 +112,8 @@ Full walkthrough (registry visibility, volume/host-path notes, building from the
 - [x] Backend API + SQLite storage + Swagger docs
 - [x] Web UI (mobile-first, Hebrew RTL)
 - [x] Figure enrollment from the UI (no code changes to add a new figure/tag)
-- [x] Multi-provider LLM support (Claude, OpenAI)
-- [x] AI-generated illustrations (3 per story, plot-locked, never persisted)
+- [x] Multi-provider LLM support (Claude, OpenAI, Gemini)
+- [x] AI-generated illustrations (OpenAI, Gemini - 3 per story, plot-locked, never persisted)
 - [x] Structured logging (pino) - requests, scans, generation timing
 - [x] System tests
 - [x] TypeScript throughout
