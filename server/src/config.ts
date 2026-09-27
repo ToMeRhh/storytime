@@ -9,7 +9,9 @@ export interface Config {
   llmModel: string;
   anthropicApiKey: string;
   openaiApiKey: string;
+  geminiApiKey: string;
   generateImages: boolean;
+  imageProvider: 'openai' | 'gemini' | 'mock';
   imageModel: string;
   imageQuality: 'low' | 'medium' | 'high';
   dbPath: string;
@@ -19,16 +21,59 @@ export interface Config {
   logPretty: boolean;
 }
 
+export function resolveDefaultLlmModel(provider: string, envModel = process.env.LLM_MODEL): string {
+  if (envModel) return envModel;
+  switch (provider) {
+    case 'gemini':
+      return 'gemini-3.8-flash';
+    case 'anthropic':
+      return 'claude-haiku-4-5-20251001';
+    case 'openai':
+    default:
+      return 'gpt-4.1';
+  }
+}
+
+export function resolveDefaultImageModel(provider: string, envModel = process.env.IMAGE_MODEL): string {
+  if (envModel) return envModel;
+  switch (provider) {
+    case 'gemini':
+      return 'gemini-3.1-flash-image';
+    case 'openai':
+    default:
+      return 'gpt-image-1.5';
+  }
+}
+
+export function isImageGenerationConfigured(
+  provider: string,
+  keys: { geminiApiKey?: string; openaiApiKey?: string }
+): boolean {
+  switch (provider) {
+    case 'gemini':
+      return Boolean(keys.geminiApiKey);
+    case 'openai':
+      return Boolean(keys.openaiApiKey);
+    case 'mock':
+      return true;
+    default:
+      return false;
+  }
+}
+
+const llmProvider = process.env.LLM_PROVIDER || 'openai';
+const imageProvider = (process.env.IMAGE_PROVIDER || 'openai') as 'openai' | 'gemini' | 'mock';
+
 const config: Config = {
   port: parseInt(process.env.PORT || '3000', 10) || 3000,
-  llmProvider: process.env.LLM_PROVIDER || 'openai',
-  llmModel: process.env.LLM_MODEL || 'gpt-4.1',
+  llmProvider,
+  llmModel: resolveDefaultLlmModel(llmProvider),
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
   openaiApiKey: process.env.OPENAI_API_KEY || '',
-  // illustrations always go through OpenAI's image API regardless of LLM_PROVIDER -
-  // Claude has no image generation - so this only takes effect when OPENAI_API_KEY is set
+  geminiApiKey: process.env.GEMINI_API_KEY || '',
   generateImages: (process.env.GENERATE_IMAGES ?? 'true') === 'true',
-  imageModel: process.env.IMAGE_MODEL || 'gpt-image-1.5',
+  imageProvider,
+  imageModel: resolveDefaultImageModel(imageProvider),
   // 'low' renders in roughly half the time (~11s vs ~21s per image) and costs less, which is
   // what the illustrations ship at; 'medium' gives a flatter, softer storybook look for more
   // money and time. Anything unrecognized falls back to 'low'.

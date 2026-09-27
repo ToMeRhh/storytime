@@ -5,3 +5,4 @@ server/dist/
 ui/app.js
 ui/app.js.map
 *.log
+.superpowers/
