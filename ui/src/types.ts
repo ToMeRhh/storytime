@@ -45,10 +45,9 @@ export interface StorySummary {
   snippet: string | null;
 }
 
-export interface ScanResult {
+export interface AddFigureResult {
   recognized: boolean;
   duplicate?: boolean;
-  led?: string;
   figure?: Figure;
   figures?: StoryFigureEntry[];
 }

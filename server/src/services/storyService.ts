@@ -134,40 +134,34 @@ export function setFavorite(storyId: string, favorite: boolean): Story | null {
   return getStory(storyId);
 }
 
-const LED_UNKNOWN = 'red_wiggle';
-const LED_DUPLICATE = 'blue_pulse';
-const LED_NEW = 'green_pulse';
-
-export interface ScanResult {
+export interface AddFigureResult {
   notFound?: boolean;
   recognized?: boolean;
   duplicate?: boolean;
-  led?: string;
   figure?: Figure;
   figures?: StoryFigureEntry[];
 }
 
-export function addFigure(storyId: string, rawUid: string): ScanResult {
+export function addFigure(storyId: string, rawUid: string): AddFigureResult {
   const story = getStoryStmt.get(storyId) as StoryRow | undefined;
   if (!story) {
-    logger.warn({ storyId }, 'scan against unknown story');
+    logger.warn({ storyId }, 'add figure against unknown story');
     return { notFound: true };
   }
 
   const resolved = figureService.resolveFigure(rawUid);
   if (!resolved) {
-    logger.info({ storyId, uid: rawUid }, 'scan: unrecognized tag');
-    return { recognized: false, led: LED_UNKNOWN };
+    logger.info({ storyId, uid: rawUid }, 'add figure: not in the deck');
+    return { recognized: false };
   }
 
   const existing = listFiguresForStoryStmt.all(storyId) as StoryFigureRow[];
   const duplicate = existing.some((f) => f.uid === resolved.uid);
   if (duplicate) {
-    logger.info({ storyId, uid: resolved.uid, figureName: resolved.name }, 'scan: duplicate figure');
+    logger.info({ storyId, uid: resolved.uid, figureName: resolved.name }, 'add figure: already in story');
     return {
       recognized: true,
       duplicate: true,
-      led: LED_DUPLICATE,
       figure: resolved,
       figures: (getStory(storyId) as Story).figures,
     };
@@ -176,13 +170,12 @@ export function addFigure(storyId: string, rawUid: string): ScanResult {
   insertFigureStmt.run(storyId, resolved.uid, resolved.name, resolved.category, new Date().toISOString());
   logger.info(
     { storyId, uid: resolved.uid, figureName: resolved.name, category: resolved.category },
-    'scan: figure added to story'
+    'add figure: added to story'
   );
 
   return {
     recognized: true,
     duplicate: false,
-    led: LED_NEW,
     figure: resolved,
     figures: (getStory(storyId) as Story).figures,
   };

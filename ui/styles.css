@@ -1108,7 +1108,7 @@ button.text-btn {
   margin: 10px 0 4px;
 }
 
-/* new-figure modal (unrecognized scan during story building) */
+/* new-figure modal (adding a figure to the deck from the figures tab) */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1274,20 +1274,8 @@ button.text-btn {
   margin-top: 10px;
 }
 
-.scanned-uid-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--surface-sunken);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
-  font-size: 0.82rem;
-}
-
-.scanned-uid-row .uid {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  direction: ltr;
-  font-weight: 600;
+#btn-add-figure {
+  margin: 4px 0 14px;
 }
 
 .field {

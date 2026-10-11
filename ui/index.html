@@ -99,7 +99,8 @@
 
       <section id="tab-manage" class="tab-panel" role="tabpanel" aria-labelledby="nav-manage">
         <h2>הדמויות הקיימות</h2>
-        <p class="hint">דמויות חדשות נוספות תוך כדי סיפור - סרקו תג לא מוכר ותתבקשו לתת לו שם.</p>
+        <p class="hint">דמות, מקום, מצב רוח או חפץ משלכם - הוסיפו, והם יופיעו בבחירת הדמויות.</p>
+        <button type="button" id="btn-add-figure" class="primary large">＋ הוסיפו דמות חדשה</button>
         <div id="manage-list"></div>
       </section>
     </main>
@@ -162,13 +163,9 @@
 
   <div id="new-figure-modal" class="modal-overlay hidden">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="new-figure-modal-title">
-      <h2 id="new-figure-modal-title">תג לא מוכר</h2>
-      <p class="hint">זו הפעם הראשונה שהתג הזה נסרק. מי/מה זה?</p>
+      <h2 id="new-figure-modal-title">דמות חדשה</h2>
+      <p class="hint">מי או מה מצטרפים לחבילה?</p>
       <form id="new-figure-form">
-        <div class="scanned-uid-row">
-          <span class="muted">UID:</span>
-          <span id="new-figure-uid" class="uid"></span>
-        </div>
         <label class="field">
           <span>קטגוריה</span>
           <select id="new-figure-category">
@@ -186,7 +183,7 @@
           <span>תיאור (אופציונלי)</span>
           <textarea id="new-figure-description" rows="2"></textarea>
         </label>
-        <button type="submit" class="primary large">הוסף לסיפור</button>
+        <button type="submit" class="primary large">הוסף</button>
         <button type="button" id="btn-cancel-new-figure" class="text-btn">ביטול</button>
       </form>
     </div>

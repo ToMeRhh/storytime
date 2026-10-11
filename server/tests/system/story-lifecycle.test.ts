@@ -12,7 +12,7 @@ async function pickFigureByCategory(category: string) {
   return figure as { uid: string; name: string; category: string };
 }
 
-test('full story lifecycle: create -> scan (new/duplicate/unknown) -> gate -> generate -> history', async () => {
+test('full story lifecycle: create -> add figures (new/duplicate/unknown) -> gate -> generate -> history', async () => {
   const character = await pickFigureByCategory('character');
   const location = await pickFigureByCategory('location');
   const mood = await pickFigureByCategory('mood');
@@ -24,33 +24,32 @@ test('full story lifecycle: create -> scan (new/duplicate/unknown) -> gate -> ge
   assert.deepEqual(created.body.figures, []);
   const storyId = created.body.id;
 
-  // 2. unknown uid -> recognized:false, does not get added
-  const unknownScan = await request(app)
+  // 2. uid not in the deck -> recognized:false, does not get added
+  const unknownAdd = await request(app)
     .post(`/api/stories/${storyId}/figures`)
     .send({ uid: 'DOES-NOT-EXIST-UID' });
-  assert.equal(unknownScan.status, 200);
-  assert.deepEqual(unknownScan.body, { recognized: false, led: 'red_wiggle' });
+  assert.equal(unknownAdd.status, 200);
+  assert.deepEqual(unknownAdd.body, { recognized: false });
 
   // 3. new figure -> recognized, not duplicate, added
-  const firstScan = await request(app)
+  const firstAdd = await request(app)
     .post(`/api/stories/${storyId}/figures`)
     .send({ uid: character.uid });
-  assert.equal(firstScan.status, 200);
-  assert.equal(firstScan.body.recognized, true);
-  assert.equal(firstScan.body.duplicate, false);
-  assert.equal(firstScan.body.led, 'green_pulse');
-  assert.equal(firstScan.body.figures.length, 1);
+  assert.equal(firstAdd.status, 200);
+  assert.equal(firstAdd.body.recognized, true);
+  assert.equal(firstAdd.body.duplicate, false);
+  assert.equal(firstAdd.body.figures.length, 1);
+  assert.equal('led' in firstAdd.body, false, 'the legacy led hint is gone from responses');
 
-  // 4. same tag again (different casing/separators - normalization) -> duplicate, not re-added
+  // 4. same figure again (different casing/separators - normalization) -> duplicate, not re-added
   const messyUid = character.uid.toLowerCase().split('').join('-');
-  const dupeScan = await request(app)
+  const dupeAdd = await request(app)
     .post(`/api/stories/${storyId}/figures`)
     .send({ uid: messyUid });
-  assert.equal(dupeScan.status, 200);
-  assert.equal(dupeScan.body.recognized, true);
-  assert.equal(dupeScan.body.duplicate, true);
-  assert.equal(dupeScan.body.led, 'blue_pulse');
-  assert.equal(dupeScan.body.figures.length, 1);
+  assert.equal(dupeAdd.status, 200);
+  assert.equal(dupeAdd.body.recognized, true);
+  assert.equal(dupeAdd.body.duplicate, true);
+  assert.equal(dupeAdd.body.figures.length, 1);
 
   // 5. generate before the gate is satisfied -> 422 listing exactly what's missing
   const blockedGenerate = await request(app).post(`/api/stories/${storyId}/generate`);
@@ -95,15 +94,15 @@ test('full story lifecycle: create -> scan (new/duplicate/unknown) -> gate -> ge
   assert.ok(entry.snippet && entry.snippet.length > 0);
 });
 
-test('removing a scanned figure takes it out of the story', async () => {
+test('removing a figure takes it out of the story', async () => {
   const character = await pickFigureByCategory('character');
   const created = await request(app).post('/api/stories');
   const storyId = created.body.id;
 
-  const scan = await request(app)
+  const added = await request(app)
     .post(`/api/stories/${storyId}/figures`)
     .send({ uid: character.uid });
-  const entryId = scan.body.figures[0].entryId;
+  const entryId = added.body.figures[0].entryId;
 
   const del = await request(app).delete(`/api/stories/${storyId}/figures/${entryId}`);
   assert.equal(del.status, 204);

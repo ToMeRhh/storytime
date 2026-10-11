@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { randomUUID } from 'crypto';
 import config from '../config';
 import db from '../data/db';
 import logger from '../logger';
@@ -28,7 +29,7 @@ const markSeededStmt = db.prepare(
 );
 
 // Seed from the bundled starter deck (server/src/data/figures.json). The DB stays the source of
-// truth - figures enrolled through the UI survive redeploys - but a uid the deck has never
+// truth - figures added through the UI survive redeploys - but a uid the deck has never
 // seeded into this DB is new, and gets added on boot so extending the deck actually reaches a
 // server that was seeded long ago. Anything already seeded is left alone, so a figure edited or
 // deleted through the UI is not resurrected or overwritten on the next restart.
@@ -86,14 +87,24 @@ export function listFigures(): Figure[] {
 }
 
 export interface CreateFigureInput {
-  uid: string;
+  // optional: a figure created without one gets a generated id. Passing an existing uid
+  // updates that figure instead of creating a new one.
+  uid?: string;
   name: string;
   category: Category;
   description?: string;
 }
 
+function generateUid(): string {
+  let uid: string;
+  do {
+    uid = `FIG${randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase()}`;
+  } while (getStmt.get(uid));
+  return uid;
+}
+
 export function createFigure(input: CreateFigureInput): Figure {
-  const uid = normalizeUid(input.uid);
+  const uid = (input.uid && normalizeUid(input.uid)) || generateUid();
   upsertStmt.run({
     uid,
     name: input.name.trim(),
@@ -101,7 +112,7 @@ export function createFigure(input: CreateFigureInput): Figure {
     description: (input.description || '').trim(),
     createdAt: new Date().toISOString(),
   });
-  logger.info({ uid, figureName: input.name, category: input.category }, 'figure enrolled');
+  logger.info({ uid, figureName: input.name, category: input.category }, 'figure saved');
   return resolveFigure(uid) as Figure;
 }
 

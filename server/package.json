@@ -2,7 +2,7 @@
   "name": "storytime-server",
   "version": "1.9.0",
   "private": true,
-  "description": "Bedtime story generator backend - NFC figure scans to a Hebrew story via Claude",
+  "description": "Bedtime story generator backend - pick a cast, get a Hebrew story (and illustrations) from an LLM",
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",

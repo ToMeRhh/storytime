@@ -1,13 +1,8 @@
 # Storytime
 
-Generates short, personalized Hebrew bedtime stories for kids. Pick a cast — a character, a place, a mood, and optionally an object — and an LLM (Claude or OpenAI) writes a story around them.
+An AI bedtime-story app. Pick a cast - a character, a place, a mood, and optionally an object - choose how long the story should be, and an LLM writes a short, personalized Hebrew story around them. Optionally, it also paints three storybook illustrations to go with it.
 
-There are two ways to build a story:
-
-- **The physical book box** — a 3D-printed, book-shaped enclosure with an NFC reader and LED ring: scan figure tokens to build the cast. Hardware (enclosure, RC522 NFC reader, WS2812B LED ring, MAX98357A speaker amp, ESP32 firmware) is tracked separately from this repo; the firmware talks to the API described here.
-- **The web UI** — the same flow, tap-to-select instead of tap-to-scan. Works standalone with no hardware, and is also where you add new figures to the deck (see below).
-
-This repo is the software half of the project: backend + web UI.
+It's a mobile-first web app (Hebrew, right-to-left) backed by a small Node/Express API. Everything runs as one container.
 
 ## Layout
 
@@ -20,11 +15,12 @@ Both are independent TypeScript projects with their own `package.json`. The fron
 
 ## How it works
 
-1. `POST /api/stories` starts a new story (`status: "collecting"`).
-2. Each scan hits `POST /api/stories/:id/figures` with the tag's UID - the ESP32 will call this automatically the instant it reads a tag, and it always returns an `led` hint so the ring can react (`green_pulse` new / `blue_pulse` duplicate / `red_wiggle` unrecognized). The web UI's tap-to-scan deck grid hits the same endpoint, for use without hardware.
-3. Once at least one character, one location, and one mood have been added, the UI lets you pick a story length (short/medium/long, via a slider) and whether to include illustrations (off by default - it's the costlier part) before generating. `POST /api/stories/:id/generate` calls the configured LLM (Claude Haiku 4.5 by default, ~2c/story) and saves the Hebrew story text, then, if illustrations were requested, generates 3 Disney/Pixar-style illustrations - opening, middle, ending - in parallel via OpenAI's image API, staying strictly on the actual plot and cast. Illustrations are never saved - they're returned once on the generate response and shown interleaved in the story, nothing more. See [Illustrations](server/README.md#illustrations).
-4. Generated stories show up in history (`GET /api/stories`) - stories that were only started but never generated don't.
-5. Scanning an unrecognized tag opens a small "what is this?" prompt right there in the story-building screen - name it and pick a category, and it's saved to the deck *and* added to the story you're building, no code changes needed. See [Enrolling new figures](server/README.md#enrolling-new-figures).
+1. **Start a story.** `POST /api/stories` creates an empty story (`status: "collecting"`).
+2. **Pick the cast.** In the UI you choose from the deck of figures, one category at a time (`POST /api/stories/:id/figures`). A story needs at least one **character**, one **place**, and one **mood**; **objects** are optional.
+3. **Generate.** Pick a story length (short / medium / long, via a slider) and whether to include illustrations (off by default - it's the costlier part). `POST /api/stories/:id/generate` asks the configured LLM (OpenAI `gpt-4.1` by default; Claude is supported too) for the Hebrew story plus a short title, and saves it. If illustrations were requested, three Disney/Pixar-style pictures - opening, middle, ending - are then generated in parallel via OpenAI's image API, staying strictly on the actual plot and cast. See [Illustrations](server/README.md#illustrations).
+4. **Read it, and read it again.** Generated stories show up in history (`GET /api/stories`). Stories that were started but never generated don't. Illustrations are never saved - they're shown once, in the session that generated them.
+
+Figures can have a thumbnail (`ui/figure-images/`) and, for places, an optional real photograph that the illustrations are painted over, so a story can happen in an actual room. See [Managing the deck](server/README.md#managing-the-deck).
 
 Full API contract and OpenAPI docs: see [server/README.md](server/README.md) and `/docs` once the server is running.
 
@@ -36,7 +32,7 @@ npm run install:all   # installs server/ and ui/'s own dependencies
 npm run dev           # runs the backend (tsx watch) and the UI bundler (esbuild --watch) together
 ```
 
-Then open <http://localhost:3000/>. You'll need an API key for your chosen LLM provider (`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`) in `server/.env` for story generation to actually work - see [server/README.md](server/README.md#run-locally) for the one-time setup, and [server/README.md](server/README.md#config-env) for where to get a key.
+Then open <http://localhost:3000/>. You'll need an API key for your chosen LLM provider (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`) in `server/.env` for story generation to actually work - see [server/README.md](server/README.md#run-locally) for the one-time setup, and [server/README.md](server/README.md#config-env) for all the options. Illustrations always need `OPENAI_API_KEY`, whichever LLM writes the story.
 
 Editing `ui/src/app.ts` while `npm run dev` is running rebuilds `ui/app.js` automatically (via esbuild's watch mode) - just refresh the browser after saving. `server/src/**/*.ts` changes restart the backend automatically (via tsx watch).
 
@@ -57,7 +53,7 @@ Runs as a single Docker container - SQLite is an embedded file, not a separate d
 From the repo root, builds the image locally from source:
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-... OPENAI_API_KEY=sk-... docker compose up --build
+OPENAI_API_KEY=sk-... docker compose up --build
 ```
 
 ### Portainer (home server)
@@ -89,15 +85,15 @@ Then, in the stack's **Environment variables** section (not in the YAML itself -
 | Variable | Example |
 |---|---|
 | `LLM_PROVIDER` | `openai` (or `anthropic`) |
-| `LLM_MODEL` | `gpt-4o` (or `claude-haiku-4-5-20251001`) |
-| `ANTHROPIC_API_KEY` | `sk-ant-...` |
+| `LLM_MODEL` | `gpt-4.1` (or `claude-haiku-4-5-20251001`) |
 | `OPENAI_API_KEY` | `sk-...` (also required for illustrations, regardless of `LLM_PROVIDER`) |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` (only if `LLM_PROVIDER=anthropic`) |
 | `GENERATE_IMAGES` | `true` (or `false` to turn off illustrations) |
 | `LOG_LEVEL` | `info` (`debug` for full LLM/image call detail, `warn` for quieter logs) |
 
 Deploy the stack. To update later, just re-pull: **Stacks → storytime → Pull and redeploy** (or re-run the same "Add stack" with **Update the stack**) - no rebuild needed, it grabs whatever the Action most recently pushed to `latest`.
 
-Logs (every request, scan, figure enrollment, story generation with timing) show up live in **Containers → storytime → Logs** - see [server/README.md](server/README.md#logs).
+Logs (every request, figure added, story generation with timing) show up live in **Containers → storytime → Logs** - see [server/README.md](server/README.md#logs).
 
 Full walkthrough (registry visibility, volume/host-path notes, building from the git repo directly in Portainer instead of pulling the image) is in [server/README.md](server/README.md#deployment-home-server--portainer).
 
@@ -105,12 +101,11 @@ Full walkthrough (registry visibility, volume/host-path notes, building from the
 
 - [x] Backend API + SQLite storage + Swagger docs
 - [x] Web UI (mobile-first, Hebrew RTL)
-- [x] Figure enrollment from the UI (no code changes to add a new figure/tag)
-- [x] Multi-provider LLM support (Claude, OpenAI)
+- [x] Deck of figures with thumbnails, managed from the UI and API
+- [x] Multi-provider LLM support (OpenAI, Claude)
 - [x] AI-generated illustrations (3 per story, plot-locked, never persisted)
-- [x] Structured logging (pino) - requests, scans, generation timing
+- [x] Real-place reference photos for illustrations
+- [x] Structured logging (pino) - requests, figures added, generation timing
 - [x] System tests
 - [x] TypeScript throughout
 - [x] Docker image + CI (GitHub Actions: PR checks, GHCR publish on push to main)
-- [ ] ESP32 firmware (RC522 scan loop, LED gestures, MAX98357A sound effects) - not started yet
-- [ ] Book-box enclosure - designed separately, not yet wired into this repo

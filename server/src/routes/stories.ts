@@ -54,7 +54,7 @@ router.get('/stories/:id', (req: Request, res: Response) => {
  * @openapi
  * /api/stories/{id}/figures:
  *   post:
- *     summary: Register a scan against this story (called by the ESP on each NFC read)
+ *     summary: Add a figure from the deck to this story's cast
  *     tags: [Stories]
  *     parameters:
  *       - in: path
@@ -69,12 +69,14 @@ router.get('/stories/:id', (req: Request, res: Response) => {
  *             type: object
  *             required: [uid]
  *             properties:
- *               uid: { type: string, example: "04A1B2C3" }
+ *               uid: { type: string, example: "PLACEHOLDER-CHAR-01" }
  *     responses:
  *       200:
  *         description: >
- *           Always 200 even for an unknown tag, so the ESP has a clean response
- *           to drive the LED off `led` (green_pulse / blue_pulse / red_wiggle).
+ *           Always 200 for an existing story. `recognized: false` means the uid is not in
+ *           the deck; `duplicate: true` means the figure is already in this story (nothing
+ *           added). Otherwise the figure is added and `figures` is the story's updated cast.
+ *       400: { description: uid missing }
  *       404: { description: Story not found }
  */
 router.post('/stories/:id/figures', (req: Request, res: Response) => {
@@ -92,7 +94,7 @@ router.post('/stories/:id/figures', (req: Request, res: Response) => {
  * @openapi
  * /api/stories/{id}/figures/{entryId}:
  *   delete:
- *     summary: Remove a scanned figure from a story (correction, e.g. mis-scan)
+ *     summary: Remove a figure from a story's cast
  *     tags: [Stories]
  *     parameters:
  *       - in: path
@@ -189,7 +191,7 @@ router.get('/stories/:id/images', (req: Request, res: Response) => {
  * @openapi
  * /api/stories/{id}/generate:
  *   post:
- *     summary: Generate the story text (and, if enabled, illustrations) from the scanned figures
+ *     summary: Generate the story text (and, if enabled, illustrations) from the story's cast
  *     description: >
  *       Requires at least one figure each of category character, location, and mood.
  *       Returns 422 listing which required categories are still missing.
