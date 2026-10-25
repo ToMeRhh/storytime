@@ -11,7 +11,7 @@ const spec = swaggerJsdoc({
     info: {
       title: 'Storytime API',
       version: '1.0.0',
-      description: 'NFC figure scans -> Hebrew bedtime story, via Claude',
+      description: 'Pick a cast -> Hebrew bedtime story (and optional illustrations), via an LLM',
     },
   },
   apis: [routesGlob],

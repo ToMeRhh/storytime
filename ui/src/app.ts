@@ -1,4 +1,4 @@
-import { Category, Figure, ScanResult, Story, StoryLength, StorySummary } from './types';
+import { AddFigureResult, Category, Figure, Story, StoryLength, StorySummary } from './types';
 
 const API = '/api';
 const REQUIRED_CATEGORIES: Category[] = ['character', 'location', 'mood'];
@@ -82,7 +82,7 @@ const el = {
   newFigureModal: byId<HTMLElement>('new-figure-modal'),
   newFigureModalDialog: byId<HTMLElement>('new-figure-modal').querySelector('.modal') as HTMLElement,
   newFigureForm: byId<HTMLFormElement>('new-figure-form'),
-  newFigureUid: byId<HTMLElement>('new-figure-uid'),
+  btnAddFigure: byId<HTMLButtonElement>('btn-add-figure'),
   newFigureCategory: byId<HTMLSelectElement>('new-figure-category'),
   newFigureName: byId<HTMLInputElement>('new-figure-name'),
   newFigureDescription: byId<HTMLTextAreaElement>('new-figure-description'),
@@ -353,8 +353,8 @@ function renderDeck(): void {
         const btn = document.createElement('button');
         btn.className = 'token-btn';
         btn.textContent = figure.name;
-        btn.setAttribute('aria-label', `סרוק את ${figure.name} (${CATEGORY_LABELS[cat]})`);
-        btn.addEventListener('click', () => scanFigure(figure.uid));
+        btn.setAttribute('aria-label', `הוסף את ${figure.name} (${CATEGORY_LABELS[cat]})`);
+        btn.addEventListener('click', () => addFigureToStory(figure.uid));
         row.appendChild(btn);
       });
       enableDragScroll(row);
@@ -404,20 +404,16 @@ function renderManageList(): void {
   });
 }
 
-let pendingUnknownUid: string | null = null;
 let modalReturnFocus: HTMLElement | null = null;
 
-function openNewFigureModal(uid: string): void {
-  pendingUnknownUid = uid;
+function openNewFigureModal(): void {
   modalReturnFocus = document.activeElement as HTMLElement;
-  el.newFigureUid.textContent = uid;
   el.newFigureModal.classList.remove('hidden');
   el.newFigureName.focus();
   document.addEventListener('keydown', onModalKeydown);
 }
 
 function closeNewFigureModal(): void {
-  pendingUnknownUid = null;
   el.newFigureForm.reset();
   el.newFigureModal.classList.add('hidden');
   document.removeEventListener('keydown', onModalKeydown);
@@ -449,8 +445,6 @@ function onModalKeydown(event: KeyboardEvent): void {
 
 async function submitNewFigure(event: Event): Promise<void> {
   event.preventDefault();
-  if (!pendingUnknownUid) return;
-  const uid = pendingUnknownUid;
   const name = el.newFigureName.value.trim();
   const category = el.newFigureCategory.value as Category;
   const description = el.newFigureDescription.value.trim();
@@ -458,13 +452,14 @@ async function submitNewFigure(event: Event): Promise<void> {
   if (!name) return;
 
   try {
-    await api('/figures', {
+    // no uid: the server generates one
+    await api<Figure>('/figures', {
       method: 'POST',
-      body: JSON.stringify({ uid, name, category, description }),
+      body: JSON.stringify({ name, category, description }),
     });
     closeNewFigureModal();
     await loadDeck();
-    await scanFigure(uid); // now resolves - adds it straight into the current story
+    showToast(`נוסף: ${name}`);
   } catch (err) {
     showToast((err as Error).message);
   }
@@ -608,7 +603,7 @@ async function confirmFigurePicker(): Promise<void> {
       currentStory.figures = currentStory.figures.filter((f) => f.entryId !== entry.entryId);
     }
     for (const uid of toAdd) {
-      const result = await api<ScanResult>(`/stories/${currentStory.id}/figures`, {
+      const result = await api<AddFigureResult>(`/stories/${currentStory.id}/figures`, {
         method: 'POST',
         body: JSON.stringify({ uid }),
       });
@@ -626,15 +621,17 @@ async function newStory(): Promise<void> {
   renderStory();
 }
 
-async function scanFigure(uid: string): Promise<void> {
+async function addFigureToStory(uid: string): Promise<void> {
   if (!currentStory) return;
   try {
-    const result = await api<ScanResult>(`/stories/${currentStory.id}/figures`, {
+    const result = await api<AddFigureResult>(`/stories/${currentStory.id}/figures`, {
       method: 'POST',
       body: JSON.stringify({ uid }),
     });
     if (!result.recognized) {
-      openNewFigureModal(uid);
+      // the deck changed under us (e.g. deleted from another tab) - refresh it
+      showToast('הדמות כבר לא קיימת');
+      await loadDeck();
       return;
     }
     if (result.duplicate) {
@@ -873,6 +870,7 @@ el.btnNewStory.addEventListener('click', newStory);
 el.btnAbandon.addEventListener('click', abandonStory);
 el.btnRestartAfter.addEventListener('click', abandonStory);
 el.btnGenerate.addEventListener('click', generateStory);
+el.btnAddFigure.addEventListener('click', openNewFigureModal);
 el.newFigureForm.addEventListener('submit', submitNewFigure);
 el.btnCancelNewFigure.addEventListener('click', closeNewFigureModal);
 el.newFigureModal.addEventListener('click', (event) => {

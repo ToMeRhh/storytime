@@ -1,19 +1,25 @@
 # Storytime server
 
-NFC figure scans -> Hebrew bedtime story, via Claude. Also serves the `../ui` frontend as static files.
+Pick a cast, get a Hebrew bedtime story (and optionally three illustrations), via OpenAI or Claude. Also serves the `../ui` frontend as static files.
 
 ## Flow
 
 1. `POST /api/stories` -> new story, `status: "collecting"`
-2. `POST /api/stories/:id/figures` `{ uid }` -> the ESP calls this on every scan. Always 200; drives the LED off `led`:
-   - unknown tag -> `{ recognized: false, led: "red_wiggle" }`
-   - already-added tag -> `{ recognized: true, duplicate: true, led: "blue_pulse", ... }`
-   - new tag -> `{ recognized: true, duplicate: false, led: "green_pulse", ... }`
-3. `POST /api/stories/:id/generate` `{ length?, generateImages? }` -> requires at least one figure each of category `character`, `location`, `mood`. Missing ones come back as `422 { missing: [...] }`. `length` (`short` | `medium` | `long`, default `medium`) controls the target word count. `generateImages` (default `true`) is a per-story opt-out of illustrations - still requires `GENERATE_IMAGES=true` and `OPENAI_API_KEY` server-side to do anything. On success, calls the configured LLM and saves the story text plus a short auto-generated `title` (the LLM is asked for a title on the first line, parsed off before saving - see `splitTitleAndBody` in `src/services/storyService.ts`; falls back to no title if the model doesn't follow that shape), then (if enabled both server-side and for this request) generates 3 illustrations - start/middle/end - and returns them as `images: string[]` (base64 data URLs) on this response only. Images are **not persisted** - not written to the db, not saved to disk - so a later `GET` of the same story has no `images` field; they only ever exist in the browser session that just generated them.
-4. `GET /api/stories/:id` -> story + figures + text
-5. `GET /api/stories` -> history list (generated stories only - a story still being collected, or abandoned mid-way, does not show up here)
-6. `GET /api/figures` -> the full deck
-7. `POST /api/figures` `{ uid, name, category, description }` -> register a new figure against a uid (or update an existing uid's details); `DELETE /api/figures/:uid` -> remove one. This is what the UI calls when you name a newly-scanned tag mid-story - see [Enrolling new figures](#enrolling-new-figures) below.
+2. `POST /api/stories/:id/figures` `{ uid }` -> add a figure from the deck to the story's cast. Always 200:
+   - `uid` not in the deck -> `{ recognized: false }`
+   - already in this story -> `{ recognized: true, duplicate: true, figure, figures }` (nothing added)
+   - otherwise -> `{ recognized: true, duplicate: false, figure, figures }`, where `figures` is the story's updated cast
+
+   A figure's `uid` is just its unique id in the deck. It is normalized (uppercased, spaces/colons/dashes stripped - see `src/utils/uid.ts`) before it is looked up.
+
+   `DELETE /api/stories/:id/figures/:entryId` takes a figure back out of the cast.
+3. `POST /api/stories/:id/generate` `{ length?, generateImages? }` -> requires at least one figure each of category `character`, `location`, `mood` (`object` is optional). Missing ones come back as `422 { missing: [...] }`. `length` (`short` | `medium` | `long`, default `medium`) controls the target word count. `generateImages` (default `true`) is a per-story opt-out of illustrations - still requires `GENERATE_IMAGES=true` and `OPENAI_API_KEY` server-side to do anything. On success, calls the configured LLM and saves the story text plus a short auto-generated `title` (the LLM is asked for a title on the first line, parsed off before saving - see `splitTitleAndBody` in `src/services/storyService.ts`; falls back to no title if the model doesn't follow that shape). The response returns as soon as the text is written, with `imagesPending: true` if illustrations are on - see [Illustrations](#illustrations).
+4. `GET /api/stories/:id/images` -> `{ status: "pending" | "done" | "none", images: (string | null)[] }`, polled by the client while illustrations render. Memory-only; never persisted.
+5. `GET /api/stories/:id` -> story + figures + text
+6. `GET /api/stories` -> history list (generated stories only - a story still being collected, or abandoned mid-way, does not show up here)
+7. `PATCH /api/stories/:id/favorite` `{ favorite: boolean }` -> mark or unmark a story as a favorite (reflected in `GET /api/stories` and `GET /api/stories/:id`)
+8. `GET /api/figures` -> the full deck
+9. `POST /api/figures` `{ name, category, description?, uid? }` -> add a figure to the deck and get it back, including its `uid` (generated if you don't pass one; passing an existing `uid` updates that figure instead); `DELETE /api/figures/:uid` -> remove one. See [Managing the deck](#managing-the-deck) below.
 
 Full OpenAPI docs at `/docs` once running.
 
@@ -23,12 +29,12 @@ Full OpenAPI docs at `/docs` once running.
 npm test
 ```
 
-System tests in `tests/system/` drive the real Express app end-to-end through HTTP (via `supertest`) — full story lifecycle, UID normalization/duplicate detection, the generate validation gate, and 404/400 error cases. They use an isolated temp SQLite file per run and `LLM_PROVIDER=mock` (see `src/llm/mockProvider.js`), so no API key or network is needed to run them.
+System tests in `tests/system/` drive the real Express app end-to-end through HTTP (via `supertest`) — full story lifecycle, uid normalization/duplicate detection, the generate validation gate, and 404/400 error cases. They use an isolated temp SQLite file per run and `LLM_PROVIDER=mock` (see `src/llm/mockProvider.ts`), so no API key or network is needed to run them.
 
 ## Run locally
 
 ```bash
-cp .env.example .env    # paste your ANTHROPIC_API_KEY
+cp .env.example .env    # paste your OPENAI_API_KEY
 npm install
 npm run dev
 ```
@@ -40,7 +46,7 @@ Then open <http://localhost:3000/> for the UI, or <http://localhost:3000/docs> f
 `docker-compose.yml` lives at the **repo root** (`storytime/`, one level up from here), not in `server/` — that's deliberate, see the Deployment section below. From the repo root:
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-... docker compose up --build
+OPENAI_API_KEY=sk-... docker compose up --build
 ```
 
 The db file persists on the host at `server/data/stories.db` via the mounted volume (`./server/data:/app/server/data`), so `docker compose down && docker compose up` (or a full container recreate) keeps all stories.
@@ -54,41 +60,48 @@ This ships with **SQLite** (`better-sqlite3`), not a separate database server �
 **Option A - pull the published image (matches your other stacks):**
 
 1. Once the repo is public (or the `storytime` package's visibility is set to public under the repo's Packages settings - GHCR packages inherit repo visibility by default, and a private package needs a registry credential configured in Portainer to pull), Portainer → **Stacks** → **Add stack** → **Web editor**, and point `image:` at `ghcr.io/<your-github-username>/<repo-name>:latest` instead of using `build:`.
-2. Add `ANTHROPIC_API_KEY` (and `OPENAI_API_KEY` + `LLM_PROVIDER=openai` if you're switching providers) as stack environment variables, and a volume for `/app/server/data` (see below).
+2. Add `OPENAI_API_KEY` as a stack environment variable (and `ANTHROPIC_API_KEY` + `LLM_PROVIDER=anthropic` if you'd rather have Claude write the stories - illustrations still need `OPENAI_API_KEY`), and a volume for `/app/server/data` (see below).
 3. Re-running the stack pulls the newest `latest` tag pushed by the Action - no rebuild needed on the server itself.
 
 **Option B - build from the git repo directly in Portainer:**
 
 1. Portainer → **Stacks** → **Add stack** → **Repository**, point it at this repo. Leave the compose path as `docker-compose.yml` (it's at the repo root, using `build:` against `server/Dockerfile`).
-2. Add `ANTHROPIC_API_KEY` as a stack environment variable in Portainer's UI — the compose file reads it via `${ANTHROPIC_API_KEY}`. Add `OPENAI_API_KEY` and set `LLM_PROVIDER=openai` in the compose file/stack env too if you're switching providers.
+2. Add `OPENAI_API_KEY` as a stack environment variable in Portainer's UI — the compose file reads it via `${OPENAI_API_KEY}`. The compose file pins `LLM_PROVIDER=openai` and `LLM_MODEL=gpt-4.1`; edit those lines (and add `ANTHROPIC_API_KEY`) if you want Claude to write the stories instead.
 
 **Either way, the data volume:** `./server/data:/app/server/data` is a **bind mount to a path relative to the stack's working directory** (wherever Portainer keeps the stack's files on the host). That's fine as-is — Portainer keeps that directory stable across redeploys/updates of the same stack, so the db file survives. If you'd rather pin it to a specific host path (e.g. a NAS share you back up separately), change that line to an absolute host path, e.g. `/volume1/docker/storytime/data:/app/server/data`. Redeploying the stack (pulling a new image, or rebuilding) does **not** touch the volume, so story history survives every update — only deleting the underlying host folder would lose it.
 
-## Enrolling new figures
+## Managing the deck
 
-Figures (the NFC-tag deck) live in the `figures` table in SQLite, not a file — so they persist across redeploys via the same volume as story history, and don't need a code change or restart to add. On first run, the table is seeded once from `src/data/figures.json`'s placeholder deck (`PLACEHOLDER-CHAR-01`, etc.); after that the DB is the source of truth and the JSON file is no longer read.
+The deck of figures (characters, places, moods, objects) lives in the `figures` table in SQLite, not a file — so it persists across redeploys via the same volume as story history, and doesn't need a code change or restart to edit. The starter deck is bundled in `src/data/figures.json`; on boot, any starter figure that has never been seeded into this database is added, and anything already seeded is left alone - so a figure you renamed or deleted in the UI stays that way, while newly shipped starter figures still reach an old database.
 
-Registering a real tag happens inline, while building a story - no separate mode:
+The **"דמויות" (Figures)** tab in the UI lists everything currently in the deck. Its **"＋ הוסיפו דמות חדשה"** button opens a small form - category, name, optional description - and the new figure shows up in the cast picker straight away. Each row also has a delete button for retiring a figure.
 
-1. Start a story and scan the new tag (the ESP32 will call `POST /api/stories/:id/figures` with its UID once the firmware exists; until then, the UI's own tap-to-scan deck or a direct `curl` to that endpoint works the same way).
-2. An unrecognized UID comes back as `{ recognized: false }`. The UI catches that and opens a "תג לא מוכר" (unrecognized tag) modal on the spot: pick a category, give it a name, optional description.
-3. Submitting the modal calls `POST /api/figures` to register it, then immediately re-submits the same UID to the story - so the new figure is both saved to the deck for next time *and* added to the story you're building right now.
+The same thing over the API (handy from the Swagger UI at `/docs`):
 
-The **"דמויות" (Figures)** tab lists everything currently in the deck with a delete button, for fixing a mis-scan or retiring a tag.
+```json
+POST /api/figures
+{ "name": "דוב ישנוני", "category": "character", "description": "דוב גדול ועדין שאוהב לישון" }
+```
+
+`category` is one of `character`, `location`, `mood`, `object`. The response includes the generated `uid` (shown in small type under each figure's name in the Figures tab). You can also pass your own `uid` - any unique string - which is how you update an existing figure's details.
+
+**Thumbnails.** A figure's picture in the picker is `ui/figure-images/<NORMALIZED-UID>.jpg` (or `.png`), where the normalized uid is uppercase with no dashes (`BEAR-01` -> `BEAR01.jpg`). A figure with no image shows its category's emoji instead - so a figure you add from the UI works straight away, and gets a picture only if you drop a file named after its uid into that folder.
 
 ## Config (`.env`)
 
 | Var | Default | Notes |
 |---|---|---|
 | `PORT` | `3000` | |
-| `LLM_PROVIDER` | `anthropic` | `anthropic` \| `openai` \| `mock` |
-| `LLM_MODEL` | `claude-haiku-4-5-20251001` | cheap + plenty good for bedtime stories, ~2c/story. Set to an OpenAI model (e.g. `gpt-4o`) when `LLM_PROVIDER=openai` |
-| `ANTHROPIC_API_KEY` | — | required when `LLM_PROVIDER=anthropic` |
+| `LLM_PROVIDER` | `openai` | `openai` \| `anthropic` \| `mock` |
+| `LLM_MODEL` | `gpt-4.1` | follows the storytelling brief closely and answers in ~10s. Set to a Claude model (e.g. `claude-haiku-4-5-20251001`) when `LLM_PROVIDER=anthropic` |
 | `OPENAI_API_KEY` | — | required when `LLM_PROVIDER=openai`, **and** required for illustrations regardless of `LLM_PROVIDER` (Claude has no image generation) |
+| `ANTHROPIC_API_KEY` | — | required when `LLM_PROVIDER=anthropic` |
 | `GENERATE_IMAGES` | `true` | set `false` to turn off illustrations even when `OPENAI_API_KEY` is set |
-| `IMAGE_MODEL` | `gpt-image-1.5` | ~$0.03-0.05/image at medium quality -> ~$0.10-0.15/story for the 3 illustrations |
+| `IMAGE_MODEL` | `gpt-image-1.5` | the image model used for the 3 illustrations |
+| `IMAGE_QUALITY` | `low` | `low` \| `medium` \| `high`. `low` renders in about half the time and costs less per image; `medium` gives a flatter, softer storybook look for more money and time |
 | `DB_PATH` | `server/data/stories.db` | |
-| `FIGURES_PATH` | `server/src/data/figures.json` | only read once, to seed the `figures` table when it's empty (fresh DB) |
+| `FIGURES_PATH` | `server/src/data/figures.json` | the bundled starter deck - read at boot to add any starter figure not yet seeded into the `figures` table |
+| `REFERENCE_PHOTOS_PATH` | `server/data/reference-photos` | see [Reference photos](#reference-photos-illustrating-a-real-place) |
 | `LOG_LEVEL` | `info` (`silent` when `LLM_PROVIDER=mock`) | `trace` \| `debug` \| `info` \| `warn` \| `error` \| `silent`. `debug` also logs LLM token usage per call |
 | `LOG_PRETTY` | `true` | `false` for raw JSON lines (e.g. if you pipe logs into something that parses JSON) instead of the human-readable format |
 
@@ -96,7 +109,7 @@ No auth — this is designed for a closed home network only.
 
 ## Logs
 
-Structured logging via [pino](https://getpino.io), wired up in `src/logger.ts`. Every request (via `pino-http`), every scan (recognized/duplicate/new/unrecognized), every figure enrollment/deletion, and every story generation is logged with context (`storyId`, `uid`, timings). `generateStory()` specifically logs the text-generation duration, the illustration-generation duration (or the failure, since images are best-effort and don't fail the request), and a total. LLM/image provider calls log duration and outcome at `info`/`error`; full token usage is at `debug`.
+Structured logging via [pino](https://getpino.io), wired up in `src/logger.ts`. Every request (via `pino-http`), every figure added to a story (new/duplicate/not in the deck), every deck change, and every story generation is logged with context (`storyId`, `uid`, timings). `generateStory()` specifically logs the text-generation duration, the illustration-generation duration (or the failure, since images are best-effort and don't fail the request), and a total. LLM/image provider calls log duration and outcome at `info`/`error`; full token usage is at `debug`.
 
 In Portainer, this all lands in the container's stdout, so **Containers → storytime → Logs** shows it live - no extra setup needed. Locally, `docker compose logs -f` or just watch the `npm run dev` terminal.
 

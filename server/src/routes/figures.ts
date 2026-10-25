@@ -10,7 +10,7 @@ const VALID_CATEGORIES: Category[] = ['character', 'location', 'mood', 'object']
  * @openapi
  * /api/figures:
  *   get:
- *     summary: List the full deck of known figures (NFC tokens)
+ *     summary: List the full deck of figures (characters, places, moods, objects)
  *     tags: [Figures]
  *     responses:
  *       200:
@@ -35,7 +35,7 @@ router.get('/figures', (req: Request, res: Response) => {
  * @openapi
  * /api/figures:
  *   post:
- *     summary: Register a figure against a tag UID (or update an existing UID's details)
+ *     summary: Add a figure to the deck (or update an existing figure, if its uid is given)
  *     tags: [Figures]
  *     requestBody:
  *       required: true
@@ -43,21 +43,26 @@ router.get('/figures', (req: Request, res: Response) => {
  *         application/json:
  *           schema:
  *             type: object
- *             required: [uid, name, category]
+ *             required: [name, category]
  *             properties:
- *               uid: { type: string, example: "04A1B2C3" }
+ *               uid:
+ *                 type: string
+ *                 description: >
+ *                   Optional. Omit it and an id is generated. Pass an existing uid to update
+ *                   that figure's details instead of creating a new one.
+ *                 example: "BEAR-01"
  *               name: { type: string }
  *               category: { type: string, enum: [character, location, mood, object] }
  *               description: { type: string }
  *     responses:
- *       201: { description: Created (or updated, if the uid already existed) }
+ *       201: { description: Created (or updated, if the uid already existed). Returns the figure, including its uid }
  *       400: { description: Missing/invalid field }
  */
 router.post('/figures', (req: Request, res: Response) => {
   const { uid, name, category, description } = req.body || {};
 
-  if (typeof uid !== 'string' || !uid.trim()) {
-    return res.status(400).json({ error: 'uid is required' });
+  if (uid !== undefined && (typeof uid !== 'string' || !uid.trim())) {
+    return res.status(400).json({ error: 'uid must be a non-empty string when given' });
   }
   if (typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'name is required' });
